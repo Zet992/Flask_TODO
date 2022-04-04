@@ -6,14 +6,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 
 from .db_session import SqlAlchemyBase
+from .projects import project_to_user
 
 
-class User(SqlalchemyBase, UserMixin):
+class User(SqlAlchemyBase, UserMixin):
     __tablename__ = 'user'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True,
                            autoincrement=True)
-    name = sqlalchemy.Column(sqlalchemy.String)
+    name = sqlalchemy.Column(sqlalchemy.String, unique=True)
     age = sqlalchemy.Column(sqlalchemy.Integer, nullable=True)
     birth_date = sqlalchemy.Column(sqlalchemy.Date, nullable=True)
     speciality = sqlalchemy.Column(sqlalchemy.String, nullable=True)
@@ -22,7 +23,9 @@ class User(SqlalchemyBase, UserMixin):
     hashed_password = sqlalchemy.Column(sqlalchemy.String)
     created = sqlalchemy.Column(sqlalchemy.DateTime,
                                 default=datetime.datetime.now())
-    projects = orm.relationship('Project', back_populates='leader')
+    own_projects = orm.relationship('Project', back_populates='leader')
+    projects = orm.relationship('Project', secondary=project_to_user,
+                                back_populates='members')
     events = orm.relationship('Event', back_populates='author')
     messages = orm.relationship('messages', back_populates='author')
 

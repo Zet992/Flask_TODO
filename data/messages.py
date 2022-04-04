@@ -6,7 +6,7 @@ from sqlalchemy import orm
 from .db_session import SqlAlchemyBase
 
 
-class Message(SqlalchemyBase):
+class Message(SqlAlchemyBase):
     __tablename__ = 'message'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True,

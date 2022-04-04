@@ -26,7 +26,7 @@ def global_init(db_file):
 
     from . import __all_models
 
-    SqlalchemyBase.metadata.create_all(engine)
+    SqlAlchemyBase.metadata.create_all(engine)
 
 
 def create_session() -> Session:

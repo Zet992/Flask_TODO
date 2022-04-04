@@ -13,7 +13,7 @@ class Event(SqlAlchemyBase):
                            autoincrement=True)
     title = sqlalchemy.Column(sqlalchemy.String)
     description = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    date = sqlalchemy.Column(sqlalchemy.Datetime,
+    date = sqlalchemy.Column(sqlalchemy.DateTime,
                              default=datetime.datetime.now())
     author_id = sqlalchemy.Column(sqlalchemy.Integer,
                                   sqlalchemy.ForeignKey('user.id'))
