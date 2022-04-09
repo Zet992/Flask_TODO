@@ -21,13 +21,14 @@ class User(SqlAlchemyBase, UserMixin):
     email = sqlalchemy.Column(sqlalchemy.String, unique=True,
                               index=True)
     hashed_password = sqlalchemy.Column(sqlalchemy.String)
+    slug = sqlalchemy.Column(sqlalchemy.String, unique=True)
     created = sqlalchemy.Column(sqlalchemy.DateTime,
                                 default=datetime.datetime.now())
     own_projects = orm.relationship('Project', back_populates='leader')
     projects = orm.relationship('Project', secondary=project_to_user,
                                 back_populates='members')
     events = orm.relationship('Event', back_populates='author')
-    messages = orm.relationship('messages', back_populates='author')
+    messages = orm.relationship('Message', back_populates='author')
 
     def set_password(self, password):
         self.hashed_password = generate_password_hash(password)

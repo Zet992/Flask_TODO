@@ -24,6 +24,8 @@ class Project(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True,
                            autoincrement=True)
     title = sqlalchemy.Column(sqlalchemy.String)
+    description = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    slug = sqlalchemy.Column(sqlalchemy.String)
     messages = orm.relationship('Message')
     leader_id = sqlalchemy.Column(sqlalchemy.Integer,
                                  sqlalchemy.ForeignKey('user.id'))
