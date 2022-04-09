@@ -1,0 +1,36 @@
+{% extends 'base.html %}
+
+{% block title %}
+{{ project.title }}
+{% endblock %}
+
+{% block content %}
+<h1>{{ project.title }}</h1>
+<div class="container-fluid">
+<div class="row">
+<div class="col-8">
+    {% if current_user.id == project.leader.id %}
+    <a class="btn btn-danger" href="delete">Delete project</a>
+    {% endif %}
+    <h3>Tasks</h3>
+    {% for task in tasks project.tasks %}
+        <div class="container">
+            {{ task.title }}
+            {{ task.description }}
+            {{ task.created }}
+        </div>
+    {% endfor %}
+</div>
+<div class="col">
+    <a class="btn btn-info" href="chat">Chat of project</a>
+    {% for message in project.messages %}
+        <div class="container">
+            {{ message.body }}
+            {{ message.author.name }}
+            {{ message.created }}
+        </div>
+    {% endfor %}
+</div>
+</div>
+</div>
+{% endblock %}
