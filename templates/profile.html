@@ -1,4 +1,4 @@
-{% extends 'base.html %}
+{% extends 'base.html' %}
 
 {% block title %}
 {{ user.name }}
@@ -6,7 +6,7 @@
 
 {% block content %}
 <h1>Profile {{ user.name }}</h1>
-<a href="/create_project">Create project</a>
+<a class="btn btn-success" href="/create_project">Create project</a>
 {% for project in user.projects %}
     <div class="card">
         <div class="card-body">

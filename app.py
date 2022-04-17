@@ -7,7 +7,7 @@ from flask_login import LoginManager, login_required, login_user
 from flask_login import logout_user, current_user
 from flask_wtf import FlaskForm
 from wtforms import PasswordField, StringField, SubmitField, EmailField
-from wtforms import BooleanField, DateTimeField
+from wtforms import BooleanField, DateTimeField, TextAreaField
 from wtforms.validators import DataRequired
 
 from data import db_session
@@ -43,9 +43,23 @@ class LoginForm(FlaskForm):
 class ProjectForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     description = StringField('Description', validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+
+class TaskForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[DataRequired()])
+    is_finished = BooleanField('Is it finished?')
+    submit = SubmitField('Submit')
+
+
+class MessageForm(FlaskForm):
+    body = TextAreaField('Body', validators=[DataRequired()])
+    submit = SubmitField('Submit')
 
 
 def slugify(title):
+    pattern = r"[^\w+]"
     if not title:
         return None
     return re.sub(pattern, "-", title).lower()
@@ -72,6 +86,10 @@ def register():
         user = User()
         user.name = form.name.data
         user.email = form.email.data
+        if db_sess.query(User).filter(User.slug == slugify(user.name)).first():
+            pass  # write an auto generation of slug
+        else:
+            user.slug = slugify(user.name)
         user.slug = slugify(user.name)
         user.set_password(form.password.data)
         db_sess.add(user)
@@ -105,7 +123,9 @@ def logout():
 
 @app.route('/')
 def main_page():
-    return render_template('main_page.html')
+    db_sess = db_session.create_session()
+    projects = db_sess.query(Project).all()
+    return render_template('main_page.html', projects=projects)
 
 
 @app.route('/users/<user_slug>')
@@ -142,12 +162,33 @@ def delete_project(user_slug, project_slug):
         return abort(403)
     db_sess.delete(project)
     db_sess.commit()
-    return redirect('/users/<user_slug>/projects')
+    return redirect(f'/users/{user_slug}')
 
 
-@app.route('/users/<user_slug>/projects/<project_slug>/chat',
+@app.route('/users/<user_slug>/projects/<project_slug>/create_task',
            methods=['GET', 'POST'])
-def project_chat(user_slug, project_slug):
+def create_task(user_slug, project_slug):
+    if not current_user.is_authenticated:
+        return abort(403)
+    db_sess = db_session.create_session()
+    project = db_sess.query(Project).filter(Project.slug == project_slug).first()
+    if project.leader != current_user:
+        return abort(403)
+    form = TaskForm()
+    if form.validate_on_submit():
+        task = Task()
+        task.title = form.title.data
+        task.description = form.description.data
+        task.is_finished = form.is_finished.data
+        task.project_id = project.id
+        db_sess.add(task)
+        db_sess.commit()
+        return redirect(f'/users/{user_slug}/projects/{project_slug}')
+    return render_template('create_task.html', form=form)
+
+
+@app.route('/users/<user_slug>/projects/<project_slug>/tasks/<int:task_id>')
+def delete_task(user_slug, project_slug, task_id):
     db_sess = db_session.create_session()
     user = db_sess.query(User).filter(User.slug == user_slug).first()
     if not user:
@@ -155,7 +196,56 @@ def project_chat(user_slug, project_slug):
     project = db_sess.query(Project).filter(Project.slug == project_slug).first()
     if not project or project.leader_id != user.id:
         return abort(404)
-    return render_template('chat.html', project=project)
+    if current_user.id != project.leader_id:
+        return abort(403)
+    task = db_sess.query(Task).get(task_id)
+    if not task:
+        return abort(404)
+    db_sess.delete(task)
+    db_sess.commit()
+    return redirect(f'/users/{user_slug}/projects/{project_slug}')
+
+
+@app.route('/users/<user_slug>/projects/<project_slug>/chat',
+           methods=['GET', 'POST'])
+def project_chat(user_slug, project_slug):
+    form = MessageForm()
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.slug == user_slug).first()
+    if not user:
+        return abort(404)
+    project = db_sess.query(Project).filter(Project.slug == project_slug).first()
+    if not project or project.leader_id != user.id:
+        return abort(404)
+
+    if form.validate_on_submit() and current_user.is_authenticated:
+        message = Message()
+        message.author_id = current_user.id
+        message.project_id = project.id
+        message.body = form.body.data
+        db_sess.add(message)
+        db_sess.commit()
+
+    return render_template('chat.html', project=project, form=form)
+
+
+@app.route('/users/<user_slug>/projects/<project_slug>/messages/<int:message_id>')
+def delete_message(user_slug, project_slug, message_id):
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.slug == user_slug).first()
+    if not user:
+        return abort(404)
+    project = db_sess.query(Project).filter(Project.slug == project_slug).first()
+    if not project or project.leader_id != user.id:
+        return abort(404)
+    if current_user.id != project.leader_id:
+        return abort(403)
+    message = db_sess.query(Message).get(message_id)
+    if not message:
+        return abort(404)
+    db_sess.delete(message)
+    db_sess.commit()
+    return redirect(f'/users/{user_slug}/projects/{project_slug}')
 
 
 @app.route('/create_project', methods=['GET', 'POST'])
@@ -168,15 +258,21 @@ def create_project():
         project = Project()
         project.title = form.title.data
         project.description = form.description.data
+        project.leader_id = current_user.id
         if db_sess.query(Project).filter(Project.slug == slugify(project.title)).first():
-            pass  # write a auto generation of slug
+            pass  # write an auto generation of slug
         else:
             project.slug = slugify(project.title)
-        db_sess.add(project)
-        db_sess.commit()
-        return redirect('/login')
-    return render_template('register.html', form=form)
-
+        project.members.append(current_user)
+        obj_sess = db_sess.object_session(project)
+        if obj_sess:
+            obj_sess.add(project)
+            obj_sess.commit()
+        else:
+            db_sess.add(project)
+            db_sess.commit()
+        return redirect(f'/users/{current_user.slug}')
+    return render_template('create_project.html', form=form)
 
 
 def main():

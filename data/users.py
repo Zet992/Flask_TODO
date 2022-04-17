@@ -21,7 +21,7 @@ class User(SqlAlchemyBase, UserMixin):
     email = sqlalchemy.Column(sqlalchemy.String, unique=True,
                               index=True)
     hashed_password = sqlalchemy.Column(sqlalchemy.String)
-    slug = sqlalchemy.Column(sqlalchemy.String, unique=True)
+    slug = sqlalchemy.Column(sqlalchemy.String)
     created = sqlalchemy.Column(sqlalchemy.DateTime,
                                 default=datetime.datetime.now())
     own_projects = orm.relationship('Project', back_populates='leader')

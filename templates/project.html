@@ -1,4 +1,4 @@
-{% extends 'base.html %}
+{% extends 'base.html' %}
 
 {% block title %}
 {{ project.title }}
@@ -10,25 +10,53 @@
 <div class="row">
 <div class="col-8">
     {% if current_user.id == project.leader.id %}
-    <a class="btn btn-danger" href="delete">Delete project</a>
+    <a class="btn btn-danger"
+       href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/delete">
+        Delete project
+    </a>
+    <a class="btn btn-warning"
+       href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/create_task">
+        Add a task
+    </a>
     {% endif %}
     <h3>Tasks</h3>
-    {% for task in tasks project.tasks %}
-        <div class="container">
-            {{ task.title }}
-            {{ task.description }}
-            {{ task.created }}
+    {% for task in project.tasks %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">{{ task.title }}</h5>
+            <h6 class="card-subtitle mb-2 text-muted">
+                {{ task.created }}
+                {% if current_user.id == project.leader.id %}
+                <a class="btn btn-danger"
+                href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/tasks/{{ task.id }}">
+                Delete Task
+                </a>
+                {% endif %}
+            </h6>
+            <p class="card-text">{{ task.description }}</p>
         </div>
+    </div>
     {% endfor %}
 </div>
-<div class="col">
-    <a class="btn btn-info" href="chat">Chat of project</a>
+<div class="col-4">
+    <a class="btn btn-info"
+       href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/chat">Chat of project</a>
     {% for message in project.messages %}
-        <div class="container">
-            {{ message.body }}
-            {{ message.author.name }}
-            {{ message.created }}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">{{ message.author.name }}</h5>
+            <h6 class="card-subtitle mb-2 text-muted">
+                {{ message.created }}
+                {% if current_user.id == project.leader.id %}
+                <a class="btn btn-danger"
+                href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/messages/{{ message.id }}">
+                Delete Message
+                </a>
+                {% endif %}
+            </h6>
+            <p class="card-text">{{ message.body }}</p>
         </div>
+    </div>
     {% endfor %}
 </div>
 </div>
