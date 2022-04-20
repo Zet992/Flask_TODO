@@ -20,19 +20,19 @@
     </a>
     {% endif %}
     <h3>Tasks</h3>
-    {% for task in project.tasks %}
+    {% for task in project.tasks|reverse %}
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">{{ task.title }}</h5>
             <h6 class="card-subtitle mb-2 text-muted">
                 {{ task.created }}
-                {% if current_user.id == project.leader.id %}
+            </h6>
+            {% if current_user.id == project.leader.id %}
                 <a class="btn btn-danger"
                 href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/tasks/{{ task.id }}">
                 Delete Task
                 </a>
                 {% endif %}
-            </h6>
             <p class="card-text">{{ task.description }}</p>
         </div>
     </div>
@@ -42,19 +42,13 @@
     <h3>Chat</h3>
     <a class="btn btn-info"
        href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/chat">Chat of project</a>
-    {% for message in project.messages %}
+    {% for message in project.messages|reverse %}
     {% if loop.index0 < 3 %}
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">{{ message.author.name }}</h5>
             <h6 class="card-subtitle mb-2 text-muted">
                 {{ message.created }}
-                {% if current_user.id == project.leader.id %}
-                <a class="btn btn-danger"
-                href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/messages/{{ message.id }}">
-                Delete Message
-                </a>
-                {% endif %}
             </h6>
             <p class="card-text">{{ message.body }}</p>
         </div>
@@ -62,9 +56,23 @@
     {% endif %}
     {% endfor %}
     <h3>Members</h3>
+    <uL>
     {% for member in project.members %}
+    <li>
     <a href="/users/{{ member.slug }}">{{ member.name }}</a>
+    {% if current_user.id == project.leader.id %}
+        <a class="btn btn-danger"
+        href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/members/{{ member.id }}">
+        Delete Member
+        </a>
+    {% endif %}
+    </li>
     {% endfor %}
+    </ul>
+    {% if current_user.is_authenticated and current_user.id == project.leader.id %}
+    <a href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}/add_member"
+    class="btn btn-info">Add a member</a>
+    {% endif %}
 </div>
 </div>
 </div>

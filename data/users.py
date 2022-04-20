@@ -22,6 +22,7 @@ class User(SqlAlchemyBase, UserMixin):
                               index=True)
     hashed_password = sqlalchemy.Column(sqlalchemy.String)
     slug = sqlalchemy.Column(sqlalchemy.String)
+    profile_image = sqlalchemy.Column(sqlalchemy.String, default='default.png')
     created = sqlalchemy.Column(sqlalchemy.DateTime,
                                 default=datetime.datetime.now())
     own_projects = orm.relationship('Project', back_populates='leader')

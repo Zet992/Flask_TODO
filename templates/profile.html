@@ -5,9 +5,31 @@
 {% endblock %}
 
 {% block content %}
-<h1>Profile {{ user.name }}</h1>
-<a class="btn btn-success" href="/create_project">Create project</a>
-{% for project in user.projects %}
+<h1>Profile</h1>
+<div class="container-fluid">
+<div class="row">
+<div class="col-4">
+    <h3>{{ user.name }}</h3>
+    <img src="{{ url_for('static', filename='profile_images/' + user.profile_image) }}"
+    alt="profile_image" width="180" height="180">
+    {% if current_user.is_authenticated and current_user.id == user.id %}
+        <form enctype="multipart/form-data" method="post">
+        <label>
+            Upload new profile image
+            <input type="file" name="file">
+        </label>
+            <input type="submit" value="Change">
+        </form>
+    {% for message in get_flashed_messages() %}
+        {{ message }}
+    {% endfor %}
+    {% endif %}
+</div>
+<div class="col-8">
+    {% if current_user.is_authenticated and current_user.id == user.id %}
+    <a class="btn btn-success" href="/create_project">Create project</a>
+    {% endif %}
+    {% for project in user.projects %}
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">{{ project.title }}</h5>
@@ -18,5 +40,8 @@
             <a href="/users/{{ project.leader.slug }}/projects/{{ project.slug }}">Project link</a>
         </div>
     </div>
-{% endfor %}
+    {% endfor %}
+</div>
+</div>
+</div>
 {% endblock %}

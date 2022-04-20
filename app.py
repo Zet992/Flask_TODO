@@ -1,7 +1,8 @@
 import re
+import os
 
 from flask import Flask, render_template, url_for, request, redirect
-from flask import abort, make_response, jsonify
+from flask import abort, make_response, jsonify, flash
 
 from flask_login import LoginManager, login_required, login_user
 from flask_login import logout_user, current_user
@@ -22,6 +23,7 @@ app = Flask(__name__)
 login_manager = LoginManager()
 login_manager.init_app(app)
 app.config['SECRET_KEY'] = 'special_secret_key'
+PROFILE_IMAGES = 'static/profile_images/'
 
 
 class RegisterForm(FlaskForm):
@@ -58,6 +60,11 @@ class MessageForm(FlaskForm):
     submit = SubmitField('Submit')
 
 
+class MemberForm(FlaskForm):
+    slug = StringField("Member's slug", validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+
 def slugify(title):
     pattern = r"[^\w+]"
     if not title:
@@ -87,7 +94,8 @@ def register():
         user.name = form.name.data
         user.email = form.email.data
         if db_sess.query(User).filter(User.slug == slugify(user.name)).first():
-            pass  # write an auto generation of slug
+            names = list(map(lambda x: x.name, db_sess.query(User).all()))
+            user.slug = generate_unique_name(slugify(user.name), names)
         else:
             user.slug = slugify(user.name)
         user.slug = slugify(user.name)
@@ -128,13 +136,36 @@ def main_page():
     return render_template('main_page.html', projects=projects)
 
 
-@app.route('/users/<user_slug>')
+@app.route('/users/<user_slug>', methods=['POST', 'GET'])
 def profile(user_slug):
     db_sess = db_session.create_session()
     user = db_sess.query(User).filter(User.slug == user_slug).first()
-    if user:
-        return render_template('profile.html', user=user)
-    return abort(404)
+    if not user:
+        return abort(404)
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            flash("No selected file")
+            return redirect(request.url)
+        if user.profile_image != 'default.png':
+            os.remove(PROFILE_IMAGES + user.profile_image)
+        if (db_sess.query(User).filter(User.profile_image == file.filename).first()
+                or file.filename == 'default.png'):
+            filename, file_format = file.filename.split('.')
+            filenames = list(map(lambda x: x.profile_image, db_sess.query(User).all()))
+            filenames = list(map(lambda x: x.split('.')[0], filenames))
+            filenames.append('default')
+            filename = generate_unique_name(filename, filenames)
+            file.save(PROFILE_IMAGES + filename + '.' + file_format)
+            user.profile_image = filename + '.' + file_format
+        else:
+            file.save(PROFILE_IMAGES + file.filename)
+            user.profile_image = file.filename
+        db_sess.commit()
+    return render_template('profile.html', user=user)
 
 
 @app.route('/users/<user_slug>/projects/<project_slug>')
@@ -248,6 +279,50 @@ def delete_message(user_slug, project_slug, message_id):
     return redirect(f'/users/{user_slug}/projects/{project_slug}')
 
 
+@app.route('/users/<user_slug>/projects/<project_slug>/add_member',
+           methods=['POST', 'GET'])
+def add_member(user_slug, project_slug):
+    db_sess = db_session.create_session()
+    form = MemberForm()
+    user = db_sess.query(User).filter(User.slug == user_slug).first()
+    if not user:
+        abort(404)
+    project = db_sess.query(Project).filter(Project.slug == project_slug).first()
+    if not project or project.leader.id != user.id:
+        abort(404)
+    if not current_user.is_authenticated or current_user.id != user.id:
+        abort(403)
+    if form.validate_on_submit():
+        new_member = db_sess.query(User).filter(User.slug == form.slug.data).first()
+        if not new_member:
+            flash("User is not found")
+            return render_template('add_member.html',
+                                   form=form, message='User is not found')
+        project.members.append(new_member)
+        db_sess.commit()
+        return redirect(f'/users/{user_slug}/projects/{project_slug}')
+    return render_template('add_member.html', form=form)
+
+
+@app.route('/users/<user_slug>/projects/<project_slug>/members/<int:member_id>')
+def delete_member(user_slug, project_slug, member_id):
+    db_sess = db_session.create_session()
+    user = db_sess.query(User).filter(User.slug == user_slug).first()
+    if not user:
+        return abort(404)
+    project = db_sess.query(Project).filter(Project.slug == project_slug).first()
+    if not project or project.leader_id != user.id:
+        return abort(404)
+    if current_user.id != project.leader_id:
+        return abort(403)
+    member = db_sess.query(User).get(member_id)
+    if not member:
+        return abort(404)
+    project.members.remove(member)
+    db_sess.commit()
+    return redirect(f'/users/{user_slug}/projects/{project_slug}')
+
+
 @app.route('/create_project', methods=['GET', 'POST'])
 def create_project():
     if not current_user.is_authenticated:
@@ -260,7 +335,8 @@ def create_project():
         project.description = form.description.data
         project.leader_id = current_user.id
         if db_sess.query(Project).filter(Project.slug == slugify(project.title)).first():
-            pass  # write an auto generation of slug
+            slugs = list(map(lambda x: x.slug, db_sess.query(Project).all()))
+            project.slug = generate_unique_name(slugify(project.title), slugs)
         else:
             project.slug = slugify(project.title)
         project.members.append(current_user)
@@ -273,6 +349,16 @@ def create_project():
             db_sess.commit()
         return redirect(f'/users/{current_user.slug}')
     return render_template('create_project.html', form=form)
+
+
+def generate_unique_name(name, name_list):
+    i = 0
+    original_name = name
+    while name in name_list:
+        name = original_name
+        name += str(i)
+        i += 1
+    return name
 
 
 def main():

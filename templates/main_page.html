@@ -3,7 +3,7 @@
 {% block title %}Main page{% endblock %}
 {% block content %}
 <h1>Recent projects</h1>
-{% for project in projects %}
+{% for project in projects|reverse %}
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">{{ project.title }}</h5>
